@@ -1,0 +1,1636 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FlotaManager — Administrador</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600;700&display=swap');
+
+  :root {
+    --bg: #0a0b0d;
+    --bg2: #111318;
+    --bg3: #1a1d24;
+    --border: #2a2e3a;
+    --accent: #f5a623;
+    --red: #e74c3c;
+    --green: #27ae60;
+    --blue: #3498db;
+    --purple: #9b59b6;
+    --text: #e8eaf0;
+    --muted: #6b7280;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background: var(--bg); color: var(--text); font-family: 'IBM Plex Sans', sans-serif; min-height: 100vh; }
+
+  /* LOGIN */
+  #loginScreen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 24px;
+    padding: 24px;
+  }
+  .logo-big { font-family: 'Bebas Neue', cursive; font-size: 60px; color: var(--accent); letter-spacing: 6px; }
+  .logo-sub { color: var(--muted); font-family: 'IBM Plex Mono', monospace; font-size: 13px; letter-spacing: 2px; margin-top: -12px; }
+
+  .login-box {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 32px;
+    width: 100%;
+    max-width: 360px;
+  }
+  .login-title { font-family: 'Bebas Neue', cursive; font-size: 26px; margin-bottom: 20px; color: var(--text); }
+
+  .pin-row { display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; }
+  .pin-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--border); transition: all 0.15s; }
+  .pin-dot.filled { background: var(--accent); border-color: var(--accent); }
+
+  .pin-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .pin-k {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    height: 64px;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .pin-k:hover { background: rgba(245,166,35,0.1); border-color: var(--accent); }
+  .pin-k.empty { background: transparent; border: none; cursor: default; }
+
+  .pin-err { color: var(--red); font-size: 13px; text-align: center; margin-top: 12px; display: none; font-family: 'IBM Plex Mono', monospace; }
+
+  /* HEADER */
+  header {
+    background: var(--bg2);
+    border-bottom: 2px solid var(--accent);
+    padding: 0 28px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .hdr-logo { font-family: 'Bebas Neue', cursive; font-size: 26px; color: var(--accent); letter-spacing: 3px; }
+  .hdr-logo span { color: var(--text); }
+  .hdr-right { display: flex; align-items: center; gap: 16px; }
+  .hdr-user { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--muted); }
+  .btn-logout { background: none; border: 1px solid var(--border); color: var(--muted); padding: 6px 14px; border-radius: 6px; font-size: 12px; cursor: pointer; font-family: 'IBM Plex Mono', monospace; }
+  .btn-logout:hover { color: var(--text); border-color: var(--muted); }
+
+  nav { display: flex; gap: 2px; }
+  .nav-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    padding: 8px 16px;
+    cursor: pointer;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.2s;
+    border-bottom: 2px solid transparent;
+  }
+  .nav-btn.active, .nav-btn:hover { color: var(--accent); }
+  .nav-btn.active { border-bottom-color: var(--accent); }
+
+  main { padding: 28px; max-width: 1400px; margin: 0 auto; }
+
+  .page { display: none; animation: fadeIn 0.3s ease; }
+  .page.active { display: block; }
+  @keyframes fadeIn { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform: none; } }
+
+  .page-title { font-family: 'Bebas Neue', cursive; font-size: 44px; letter-spacing: 2px; margin-bottom: 4px; }
+  .page-sub { color: var(--muted); font-family: 'IBM Plex Mono', monospace; font-size: 12px; margin-bottom: 28px; }
+
+  /* STATS */
+  .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 16px; margin-bottom: 32px; }
+  .stat {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .stat::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+  .stat.a::before { background: var(--accent); }
+  .stat.r::before { background: var(--red); }
+  .stat.g::before { background: var(--green); }
+  .stat.b::before { background: var(--blue); }
+  .stat.p::before { background: var(--purple); }
+  .stat-n { font-family: 'Bebas Neue', cursive; font-size: 44px; line-height: 1; }
+  .stat.a .stat-n { color: var(--accent); }
+  .stat.r .stat-n { color: var(--red); }
+  .stat.g .stat-n { color: var(--green); }
+  .stat.b .stat-n { color: var(--blue); }
+  .stat.p .stat-n { color: var(--purple); }
+  .stat-l { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; font-family: 'IBM Plex Mono', monospace; margin-top: 4px; }
+
+  /* SECTION LABEL */
+  .slabel {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .slabel::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* CARDS */
+  .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 18px; margin-bottom: 28px; }
+
+  .vcard {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    transition: all 0.2s;
+  }
+  .vcard:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+
+  .vcard-header {
+    background: var(--bg3);
+    padding: 18px 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .vcard-icon { font-size: 28px; }
+  .vcard-name { font-family: 'Bebas Neue', cursive; font-size: 20px; letter-spacing: 1px; }
+  .vcard-plates { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--accent); letter-spacing: 2px; }
+
+  .vcard-body { padding: 16px 20px; }
+  .vrow { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 13px; }
+  .vrow:last-child { border-bottom: none; }
+  .vk { color: var(--muted); font-family: 'IBM Plex Mono', monospace; font-size: 11px; }
+  .vv { font-weight: 600; }
+  .vv.r { color: var(--red); } .vv.g { color: var(--green); } .vv.a { color: var(--accent); }
+
+  .vcard-footer { padding: 12px 20px; border-top: 1px solid var(--border); display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* BUTTONS */
+  .btn { padding: 8px 16px; border-radius: 6px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; border: none; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+  .btn-p { background: var(--accent); color: #000; }
+  .btn-p:hover { background: #ffb733; }
+  .btn-g { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .btn-g:hover { color: var(--text); border-color: var(--muted); }
+  .btn-r { background: transparent; color: var(--red); border: 1px solid rgba(231,76,60,0.3); }
+  .btn-r:hover { background: rgba(231,76,60,0.08); }
+  .btn-b { background: transparent; color: var(--blue); border: 1px solid rgba(52,152,219,0.3); }
+  .btn-b:hover { background: rgba(52,152,219,0.08); }
+  .btn-sm { padding: 5px 10px; font-size: 10px; }
+
+  /* ALERTS */
+  .alert-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
+  .aitem {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-left: 4px solid;
+    border-radius: 0 10px 10px 0;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .aitem.urgent { border-left-color: var(--red); }
+  .aitem.warning { border-left-color: var(--accent); }
+  .aitem.ok { border-left-color: var(--green); }
+  .ainfo { flex: 1; }
+  .atitle { font-size: 13px; font-weight: 700; }
+  .ameta { font-size: 12px; color: var(--muted); font-family: 'IBM Plex Mono', monospace; margin-top: 2px; }
+  .abadge { padding: 4px 12px; border-radius: 20px; font-size: 11px; font-family: 'IBM Plex Mono', monospace; font-weight: 600; white-space: nowrap; }
+  .urgent .abadge { background: rgba(231,76,60,0.15); color: var(--red); border: 1px solid rgba(231,76,60,0.3); }
+  .warning .abadge { background: rgba(245,166,35,0.15); color: var(--accent); border: 1px solid rgba(245,166,35,0.3); }
+  .ok .abadge { background: rgba(39,174,96,0.15); color: var(--green); border: 1px solid rgba(39,174,96,0.3); }
+
+  /* TABLES */
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; padding: 10px 14px; border-bottom: 2px solid var(--border); }
+  td { padding: 11px 14px; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 13px; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .chip { padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; font-family: 'IBM Plex Mono', monospace; }
+  .chip-r { background: rgba(231,76,60,0.15); color: var(--red); }
+  .chip-a { background: rgba(245,166,35,0.15); color: var(--accent); }
+  .chip-g { background: rgba(39,174,96,0.15); color: var(--green); }
+  .chip-b { background: rgba(52,152,219,0.15); color: var(--blue); }
+  .chip-p { background: rgba(155,89,182,0.15); color: var(--purple); }
+
+  /* MODAL */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 200; align-items: center; justify-content: center; padding: 20px; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--bg2); border: 1px solid var(--border); border-radius: 16px; width: 100%; max-width: 580px; max-height: 90vh; overflow-y: auto; animation: slideUp 0.3s ease; }
+  @keyframes slideUp { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .modal-header { padding: 22px 24px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .modal-title { font-family: 'Bebas Neue', cursive; font-size: 26px; letter-spacing: 1px; }
+  .modal-body { padding: 24px; }
+  .modal-footer { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; }
+  .close-btn { background: none; border: none; color: var(--muted); font-size: 22px; cursor: pointer; padding: 4px 8px; line-height: 1; border-radius: 4px; }
+  .close-btn:hover { color: var(--text); background: var(--border); }
+
+  label { display: block; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+  input, select, textarea { width: 100%; background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 10px 14px; border-radius: 8px; font-family: 'IBM Plex Sans', sans-serif; font-size: 14px; margin-bottom: 16px; transition: border-color 0.2s; }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+  /* DAMAGE PHOTOS */
+  .dmg-photos { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .dmg-photo { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); cursor: pointer; transition: border-color 0.2s; }
+  .dmg-photo:hover { border-color: var(--accent); }
+
+  /* CHART */
+  .chart-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 22px; margin-bottom: 28px; }
+  .chart-title { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; }
+
+  /* FUEL STATS */
+  .fuel-unit-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .fuel-unit-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 20px; border-top: 3px solid var(--blue); }
+  .fun-rend { font-family: 'Bebas Neue', cursive; font-size: 42px; color: var(--blue); line-height: 1; }
+  .fun-sub { font-size: 13px; color: var(--blue); font-family: 'IBM Plex Mono', monospace; }
+  .fun-name { font-size: 11px; color: var(--muted); font-family: 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: 1px; margin-top: 8px; }
+
+  /* REPAIR */
+  .repair-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 14px; border-left: 4px solid var(--red); }
+  .repair-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+  .repair-unit { font-weight: 700; font-size: 15px; }
+  .repair-taller { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .repair-items { margin-top: 10px; }
+  .repair-item { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .repair-item:last-child { border-bottom: none; }
+
+  /* PHOTOS MODAL */
+  .photo-grid-lg { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+  .photo-grid-lg img { width: 100%; border-radius: 10px; border: 1px solid var(--border); cursor: pointer; transition: border-color 0.2s; }
+  .photo-grid-lg img:hover { border-color: var(--accent); }
+
+  /* SPINNER */
+  .spinner { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 40px auto; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .empty { text-align: center; padding: 48px 24px; color: var(--muted); font-size: 14px; }
+  .empty-icon { font-size: 40px; margin-bottom: 12px; }
+
+  /* TOAST */
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--bg3); border: 1px solid var(--border); border-left: 4px solid var(--green); border-radius: 10px; padding: 12px 20px; font-size: 14px; z-index: 500; max-width: 320px; animation: toastIn 0.3s ease; }
+  @keyframes toastIn { from { transform: translateX(100%); opacity: 0; } to { transform: none; opacity: 1; } }
+
+  /* COSTOS */
+  .cat-card { background:var(--bg2); border:1px solid var(--border); border-radius:12px; padding:18px 20px; }
+  .cat-icon { font-size:28px; margin-bottom:8px; }
+  .cat-amount { font-family:'Bebas Neue',cursive; font-size:30px; color:var(--accent); line-height:1; }
+  .cat-label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; font-family:'IBM Plex Mono',monospace; margin-top:4px; }
+  .cat-pct { font-size:12px; color:var(--muted); margin-top:4px; }
+
+  .unit-cost-bar { background:var(--bg2); border:1px solid var(--border); border-radius:12px; padding:18px 20px; margin-bottom:12px; }
+  .ucb-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+  .ucb-name { font-weight:700; font-size:15px; }
+  .ucb-total { font-family:'Bebas Neue',cursive; font-size:26px; color:var(--accent); }
+  .bar-track { background:var(--bg3); border-radius:4px; height:8px; margin-bottom:8px; overflow:hidden; }
+  .bar-fill { height:100%; border-radius:4px; transition:width 0.6s ease; }
+  .bar-legend { display:flex; gap:12px; flex-wrap:wrap; }
+  .bar-leg-item { display:flex; align-items:center; gap:5px; font-size:11px; color:var(--muted); }
+  .bar-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="logo-big">FLOTA</div>
+  <div class="logo-sub">MANAGER PRO · ADMINISTRADOR</div>
+  <div class="login-box">
+    <div class="login-title">Acceso Administrador</div>
+    <div class="pin-row" id="aPinDots">
+      <div class="pin-dot"></div><div class="pin-dot"></div>
+      <div class="pin-dot"></div><div class="pin-dot"></div>
+    </div>
+    <div class="pin-grid">
+      <button class="pin-k" ontouchstart="aPin('1')" onclick="aPin('1')">1</button>
+      <button class="pin-k" ontouchstart="aPin('2')" onclick="aPin('2')">2</button>
+      <button class="pin-k" ontouchstart="aPin('3')" onclick="aPin('3')">3</button>
+      <button class="pin-k" ontouchstart="aPin('4')" onclick="aPin('4')">4</button>
+      <button class="pin-k" ontouchstart="aPin('5')" onclick="aPin('5')">5</button>
+      <button class="pin-k" ontouchstart="aPin('6')" onclick="aPin('6')">6</button>
+      <button class="pin-k" ontouchstart="aPin('7')" onclick="aPin('7')">7</button>
+      <button class="pin-k" ontouchstart="aPin('8')" onclick="aPin('8')">8</button>
+      <button class="pin-k" ontouchstart="aPin('9')" onclick="aPin('9')">9</button>
+      <button class="pin-k empty"></button>
+      <button class="pin-k" ontouchstart="aPin('0')" onclick="aPin('0')">0</button>
+      <button class="pin-k" ontouchstart="aPin('del')" onclick="aPin('del')" style="color:var(--muted);font-size:18px">⌫</button>
+    </div>
+    <div class="pin-err" id="aPinErr">PIN incorrecto</div>
+    <div style="margin-top:20px;text-align:center">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;font-family:'IBM Plex Mono',monospace">¿No funciona el teclado? Escribe tu PIN:</div>
+      <input type="password" inputmode="numeric" maxlength="4" id="pinFallback"
+        style="text-align:center;letter-spacing:8px;font-size:22px;font-weight:700;width:160px;padding:12px;border-radius:10px"
+        placeholder="••••"
+        oninput="if(this.value.length===4){ aPinVal=this.value; checkAPin(); this.value=''; }" />
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN APP -->
+<div id="adminApp" style="display:none">
+  <header>
+    <div class="hdr-logo">Flota<span>Manager</span> <span style="font-size:14px;color:var(--muted);letter-spacing:1px">ADMIN</span></div>
+    <nav>
+      <button class="nav-btn active" onclick="showPage('dashboard',this)">Dashboard</button>
+      <button class="nav-btn" onclick="showPage('unidades',this)">Unidades</button>
+      <button class="nav-btn" onclick="showPage('combustible',this)">Combustible</button>
+      <button class="nav-btn" onclick="showPage('danos',this)">Daños</button>
+      <button class="nav-btn" onclick="showPage('servicios',this)">Servicios</button>
+      <button class="nav-btn" onclick="showPage('taller',this)">Taller</button>
+      <button class="nav-btn" onclick="showPage('turnos',this)">Turnos</button>
+      <button class="nav-btn" onclick="showPage('mecanico',this)">Mecánico</button>
+      <button class="nav-btn" onclick="showPage('costos',this)">💰 Costos</button>
+    </nav>
+    <div class="hdr-right">
+      <div class="hdr-user">🔐 Administrador</div>
+      <button class="btn-logout" onclick="aLogout()">Salir</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- DASHBOARD -->
+    <div id="pgDashboard" class="page active">
+      <div class="page-title">Dashboard</div>
+      <div class="page-sub">// Resumen general de la flota en tiempo real</div>
+      <div class="stats-row" id="dashStats"></div>
+      <div class="slabel">Alertas Críticas</div>
+      <div class="alert-list" id="dashAlerts"></div>
+      <div class="slabel">Próximos Vencimientos (30 días)</div>
+      <div class="alert-list" id="dashUpcoming"></div>
+      <div class="slabel">Unidades en Taller</div>
+      <div id="dashTaller"></div>
+    </div>
+
+    <!-- UNIDADES -->
+    <div id="pgUnidades" class="page">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:28px">
+        <div><div class="page-title">Unidades</div><div class="page-sub">// Gestión de vehículos de carga</div></div>
+        <button class="btn btn-p" onclick="openModal('mAddUnit')">+ Agregar Unidad</button>
+      </div>
+      <div class="cards-grid" id="unidadesGrid"></div>
+    </div>
+
+    <!-- COMBUSTIBLE -->
+    <div id="pgCombustible" class="page">
+      <div class="page-title">Combustible</div>
+      <div class="page-sub">// Métricas de consumo y rendimiento por unidad</div>
+      <div class="fuel-unit-grid" id="fuelUnitStats"></div>
+      <div class="chart-box" id="fuelChartBox" style="display:none">
+        <div class="chart-title" id="fuelChartTitle">Rendimiento km/litro</div>
+        <div style="display:flex;gap:10px;margin-bottom:16px">
+          <select id="fuelChartFilter" style="width:auto;margin:0" onchange="renderFuelChart()"></select>
+        </div>
+        <canvas id="fuelChartCanvas" style="max-height:220px"></canvas>
+      </div>
+      <div class="slabel">Historial de Cargas</div>
+      <div style="display:flex;gap:10px;margin-bottom:16px">
+        <select id="fuelTableFilter" style="width:auto;margin:0" onchange="renderFuelTable()">
+          <option value="">Todas las unidades</option>
+        </select>
+      </div>
+      <table><thead><tr>
+        <th>Unidad</th><th>Operador</th><th>Fecha</th>
+        <th>Km</th><th>Km Recorridos</th><th>Litros</th><th>Precio/L</th><th>Total</th><th>Rendimiento</th><th>Gasolinera</th>
+      </tr></thead><tbody id="fuelTableBody"></tbody></table>
+    </div>
+
+    <!-- DAÑOS -->
+    <div id="pgDanos" class="page">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:28px">
+        <div><div class="page-title">Daños</div><div class="page-sub">// Registro fotográfico de golpes y daños</div></div>
+        <select id="danoFilter" style="width:auto;margin:0" onchange="renderDanos()">
+          <option value="">Todas las unidades</option>
+          <option value="pendiente">Solo pendientes</option>
+        </select>
+      </div>
+      <div id="danosGrid"></div>
+    </div>
+
+    <!-- SERVICIOS -->
+    <div id="pgServicios" class="page">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:28px">
+        <div><div class="page-title">Servicios y Documentos</div><div class="page-sub">// Tenencias, seguros, verificaciones, mantenimientos</div></div>
+        <button class="btn btn-p" onclick="openModal('mAddService')">+ Registrar</button>
+      </div>
+      <table><thead><tr>
+        <th>Unidad</th><th>Tipo</th><th>Descripción</th>
+        <th>Fecha</th><th>Próximo Vencimiento</th><th>Taller</th><th>Estado</th><th></th>
+      </tr></thead><tbody id="serviciosBody"></tbody></table>
+    </div>
+
+    <!-- TALLER / REPARACIONES -->
+    <div id="pgTaller" class="page">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:28px">
+        <div><div class="page-title">Taller y Reparaciones</div><div class="page-sub">// Unidades detenidas y trabajos pendientes</div></div>
+        <button class="btn btn-p" onclick="openModal('mAddRepair')">+ Nueva Reparación</button>
+      </div>
+      <div class="slabel">En Proceso</div>
+      <div id="repairActive"></div>
+      <div class="slabel">Historial Cerrado</div>
+      <div id="repairHistory"></div>
+    </div>
+
+    <!-- TURNOS -->
+    <div id="pgTurnos" class="page">
+      <div class="page-title">Registro de Turnos</div>
+      <div class="page-sub">// Fotos de inicio y fin de turno por operador</div>
+      <div id="turnosContent"></div>
+    </div>
+    <!-- MECÁNICO -->
+    <div id="pgMecanico" class="page">
+      <div class="page-title">Trabajos del Mecánico</div>
+      <div class="page-sub">// Historial de trabajos registrados por Taller Ynurrigarro</div>
+      <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+        <select id="mecFilterUnit" style="width:auto;margin:0" onchange="renderMecanico()">
+          <option value="">Todas las unidades</option>
+        </select>
+        <select id="mecFilterTipo" style="width:auto;margin:0" onchange="renderMecanico()">
+          <option value="">Todos los tipos</option>
+          <option value="correctivo">Correctivo</option>
+          <option value="preventivo">Preventivo</option>
+          <option value="frenos">Frenos</option>
+          <option value="motor">Motor</option>
+          <option value="electrico">Eléctrico</option>
+          <option value="carroceria">Carrocería</option>
+          <option value="suspension">Suspensión</option>
+          <option value="transmision">Transmisión</option>
+          <option value="otro">Otro</option>
+        </select>
+      </div>
+      <div id="mecStatsRow" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:24px"></div>
+      <table><thead><tr>
+        <th>Unidad</th><th>Fecha</th><th>Tipo</th><th>Descripción</th>
+        <th>Partes</th><th>Mano de Obra</th><th>Partes $</th><th>Total</th><th>Km</th>
+      </tr></thead><tbody id="mecTableBody"></tbody></table>
+    </div>
+    <!-- COSTOS -->
+    <div id="pgCostos" class="page">
+      <div class="page-title">Costos Anuales</div>
+      <div class="page-sub">// Resumen de gastos por unidad, categoría y periodo</div>
+
+      <div style="display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap;align-items:center">
+        <div>
+          <label style="margin-bottom:4px">Año</label>
+          <select id="costosAnio" style="width:auto;margin:0" onchange="renderCostos()"></select>
+        </div>
+        <div>
+          <label style="margin-bottom:4px">Unidad</label>
+          <select id="costosUnidad" style="width:auto;margin:0" onchange="renderCostos()">
+            <option value="">Toda la flota</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- KPIs totales -->
+      <div class="slabel">Resumen del Año</div>
+      <div class="stats-row" id="costosKpis"></div>
+
+      <!-- Desglose por categoría -->
+      <div class="slabel" style="margin-top:24px">Gasto por Categoría</div>
+      <div id="costosCategorias" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:28px"></div>
+
+      <!-- Gráfica mensual -->
+      <div class="chart-box" style="margin-bottom:28px">
+        <div class="chart-title">Gasto mensual acumulado</div>
+        <canvas id="costosChartMensual" style="max-height:240px"></canvas>
+      </div>
+
+      <!-- Desglose por unidad -->
+      <div class="slabel">Costo Total por Unidad</div>
+      <div id="costosPorUnidad" style="margin-bottom:28px"></div>
+
+      <!-- Tabla detalle -->
+      <div class="slabel">Detalle de Todos los Gastos</div>
+      <table><thead><tr>
+        <th>Unidad</th><th>Fecha</th><th>Categoría</th><th>Descripción</th><th>Monto</th>
+      </tr></thead><tbody id="costosTablaBody"></tbody></table>
+    </div>
+
+  </main>
+</div>
+
+<!-- MODAL: Ver Fotos -->
+<div class="modal-overlay" id="mFotos">
+  <div class="modal" style="max-width:700px">
+    <div class="modal-header">
+      <div class="modal-title" id="mFotosTitle">Fotos</div>
+      <button class="close-btn" onclick="closeModal('mFotos')">✕</button>
+    </div>
+    <div class="modal-body"><div class="photo-grid-lg" id="mFotosGrid"></div></div>
+  </div>
+</div>
+
+<!-- MODAL: Add Unit -->
+<div class="modal-overlay" id="mAddUnit">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title">Nueva Unidad</div><button class="close-btn" onclick="closeModal('mAddUnit')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div><label>Marca</label><input id="uMarca" placeholder="Ford, Nissan..." /></div>
+        <div><label>Modelo</label><input id="uModelo" placeholder="F350, NP300..." /></div>
+      </div>
+      <div class="form-row">
+        <div><label>Año</label><input type="number" id="uAnio" placeholder="2008" /></div>
+        <div><label>Placas</label><input id="uPlacas" placeholder="ABC-1234" /></div>
+      </div>
+      <div class="form-row">
+        <div><label>Alias / Número económico</label><input id="uAlias" placeholder="Unidad 03" /></div>
+        <div><label>Color</label><input id="uColor" placeholder="Blanco" /></div>
+      </div>
+      <div class="form-row">
+        <div><label>Kilometraje actual</label><input type="number" id="uKm" placeholder="50000" /></div>
+        <div><label>Tipo</label>
+          <select id="uTipo"><option value="pickup">Pickup</option><option value="camion">Camión</option><option value="van">Van</option><option value="otro">Otro</option></select>
+        </div>
+      </div>
+      <label>Operador asignado</label>
+      <select id="uOperador"><option value="">Sin asignar</option></select>
+      <label>Número de Serie (VIN)</label>
+      <input id="uVin" placeholder="1FTEX..." />
+      <label>Notas</label>
+      <textarea id="uNotas" rows="2"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-g" onclick="closeModal('mAddUnit')">Cancelar</button>
+      <button class="btn btn-p" onclick="saveUnit()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Add Service -->
+<div class="modal-overlay" id="mAddService">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title">Registrar Servicio / Documento</div><button class="close-btn" onclick="closeModal('mAddService')">✕</button></div>
+    <div class="modal-body">
+      <label>Unidad</label><select id="svUnidad"></select>
+      <div class="form-row">
+        <div><label>Tipo</label>
+          <select id="svTipo">
+            <option value="aceite">🛢 Cambio de aceite</option>
+            <option value="tenencia">📋 Tenencia</option>
+            <option value="seguro">🛡 Seguro</option>
+            <option value="verificacion">✅ Verificación</option>
+            <option value="frenos">🛑 Frenos</option>
+            <option value="llantas">🔄 Llantas</option>
+            <option value="filtros">🔩 Filtros</option>
+            <option value="revision">🔧 Revisión general</option>
+            <option value="otro">📌 Otro</option>
+          </select>
+        </div>
+        <div><label>Fecha</label><input type="date" id="svFecha" /></div>
+      </div>
+      <label>Descripción</label><textarea id="svDesc" rows="2" placeholder="Detalles..."></textarea>
+      <div class="form-row">
+        <div><label>Costo ($)</label><input type="number" id="svCosto" placeholder="0" /></div>
+        <div><label>Km al momento</label><input type="number" id="svKm" placeholder="185000" /></div>
+      </div>
+      <div class="form-row">
+        <div><label>Próximo vencimiento</label><input type="date" id="svProximo" /></div>
+        <div><label>Taller / Proveedor</label><input id="svTaller" placeholder="Nombre..." /></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-g" onclick="closeModal('mAddService')">Cancelar</button>
+      <button class="btn btn-p" onclick="saveService()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Add Repair -->
+<div class="modal-overlay" id="mAddRepair">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title">🔧 Registrar Entrada a Taller</div><button class="close-btn" onclick="closeModal('mAddRepair')">✕</button></div>
+    <div class="modal-body">
+      <label>Unidad</label><select id="rpUnidad"></select>
+      <div class="form-row">
+        <div><label>Fecha de entrada</label><input type="date" id="rpEntrada" /></div>
+        <div><label>Fecha estimada de salida</label><input type="date" id="rpSalida" /></div>
+      </div>
+      <label>Taller</label><input id="rpTaller" placeholder="Nombre del taller..." />
+      <label>Motivo principal</label><input id="rpMotivo" placeholder="Falla o motivo de entrada..." />
+      <label>Trabajos pendientes (uno por línea)</label>
+      <textarea id="rpTrabajos" rows="4" placeholder="Cambio de frenos delanteros&#10;Reparación de motor&#10;Pintura defensa..."></textarea>
+      <div class="form-row">
+        <div><label>Costo estimado ($)</label><input type="number" id="rpCosto" placeholder="0" /></div>
+        <div><label>Autorizado por</label><input id="rpAuto" placeholder="Nombre..." /></div>
+      </div>
+      <label>Notas</label><textarea id="rpNotas" rows="2"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-g" onclick="closeModal('mAddRepair')">Cancelar</button>
+      <button class="btn btn-p" onclick="saveRepair()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Editar Unidad -->
+<div class="modal-overlay" id="mEditUnit">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title">✏️ Editar Unidad</div><button class="close-btn" onclick="closeModal('mEditUnit')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="euId" />
+      <div class="form-row">
+        <div><label>Marca</label><input id="euMarca" /></div>
+        <div><label>Modelo</label><input id="euModelo" /></div>
+      </div>
+      <div class="form-row">
+        <div><label>Año</label><input type="number" id="euAnio" /></div>
+        <div><label>Placas</label><input id="euPlacas" /></div>
+      </div>
+      <div class="form-row">
+        <div><label>Alias / No. Económico</label><input id="euAlias" /></div>
+        <div><label>Color</label><input id="euColor" /></div>
+      </div>
+      <div class="form-row">
+        <div><label>Km actual</label><input type="number" id="euKm" /></div>
+        <div><label>Estado</label>
+          <select id="euEstado">
+            <option value="operativa">🟢 Operativa</option>
+            <option value="en_taller">🔧 En Taller</option>
+            <option value="fuera_servicio">🔴 Fuera de Servicio</option>
+            <option value="mantenimiento">🟡 Mantenimiento</option>
+          </select>
+        </div>
+      </div>
+      <label>Operador asignado</label>
+      <select id="euOperador"><option value="">Sin asignar</option></select>
+      <label>Número de Serie (VIN)</label>
+      <input id="euVin" />
+      <label>Notas</label>
+      <textarea id="euNotas" rows="2"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-g" onclick="closeModal('mEditUnit')">Cancelar</button>
+      <button class="btn btn-p" onclick="updateUnit()">Guardar Cambios</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Editar Servicio -->
+<div class="modal-overlay" id="mEditService">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title">✏️ Editar Servicio</div><button class="close-btn" onclick="closeModal('mEditService')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="esId" />
+      <label>Unidad</label><select id="esUnidad"></select>
+      <div class="form-row">
+        <div><label>Tipo</label>
+          <select id="esTipo">
+            <option value="aceite">🛢 Cambio de aceite</option>
+            <option value="tenencia">📋 Tenencia</option>
+            <option value="seguro">🛡 Seguro</option>
+            <option value="verificacion">✅ Verificación</option>
+            <option value="frenos">🛑 Frenos</option>
+            <option value="llantas">🔄 Llantas</option>
+            <option value="filtros">🔩 Filtros</option>
+            <option value="revision">🔧 Revisión general</option>
+            <option value="otro">📌 Otro</option>
+          </select>
+        </div>
+        <div><label>Fecha realizado</label><input type="date" id="esFecha" /></div>
+      </div>
+      <label>Descripción</label><textarea id="esDesc" rows="2"></textarea>
+      <div class="form-row">
+        <div><label>Costo ($)</label><input type="number" id="esCosto" /></div>
+        <div><label>Km al momento</label><input type="number" id="esKm" /></div>
+      </div>
+      <div class="form-row">
+        <div><label>Próximo vencimiento</label><input type="date" id="esProximo" /></div>
+        <div><label>Taller / Proveedor</label><input id="esTaller" /></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-g" onclick="closeModal('mEditService')">Cancelar</button>
+      <button class="btn btn-p" onclick="updateService()">Guardar Cambios</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" style="display:none"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+const SUPABASE_URL = 'https://wkgqidbmbgxnppftelgh.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_Fo8kOKBDHT2ehXZlVLGcVw_cl7EVA4R';
+
+let sb;
+try {
+  const _sbc = (window.supabase || window.Supabase);
+  sb = _sbc.createClient(SUPABASE_URL, SUPABASE_KEY);
+} catch(e) {
+  document.body.innerHTML = '<div style="color:#e74c3c;font-family:monospace;padding:32px;background:#0a0b0d;min-height:100vh">Error cargando Supabase.<br>Intenta recargar la página.<br><br><button onclick="location.reload()" style="background:#f5a623;color:#000;padding:12px 24px;border:none;border-radius:8px;font-size:16px;cursor:pointer">🔄 Recargar</button></div>';
+}
+
+// Admin PINs (admin=0000, Francisco=1004)
+const ADMIN_PINS = ['0000', '1004'];
+let aPinVal = '';
+let allUnidades = [], allOperadores = [];
+let fuelChart = null;
+
+// ── LOGIN ─────────────────────────────────────
+window.onload = () => {
+  if (sessionStorage.getItem('fm_admin')) startAdmin();
+};
+
+let _lastPin = 0;
+function aPin(d) {
+  const now = Date.now();
+  if (now - _lastPin < 300) return; // bloquea doble disparo touch+click
+  _lastPin = now;
+  if (d === 'del') { aPinVal = aPinVal.slice(0,-1); updateAPinDots(); return; }
+  if (aPinVal.length >= 4) return;
+  aPinVal += d;
+  updateAPinDots();
+  if (aPinVal.length === 4) setTimeout(checkAPin, 200);
+}
+
+function updateAPinDots() {
+  document.querySelectorAll('#aPinDots .pin-dot').forEach((dot, i) => {
+    dot.classList.toggle('filled', i < aPinVal.length);
+  });
+}
+
+async function checkAPin() {
+  // Also check against DB for Francisco
+  const { data } = await sb.from('operadores').select('*').eq('pin', aPinVal).in('rol', ['admin','logistica']);
+  if (ADMIN_PINS.includes(aPinVal) || (data && data.length)) {
+    sessionStorage.setItem('fm_admin', '1');
+    startAdmin();
+  } else {
+    document.getElementById('aPinErr').style.display = 'block';
+    aPinVal = '';
+    updateAPinDots();
+  }
+}
+
+async function startAdmin() {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('adminApp').style.display = 'block';
+  await loadBaseData();
+  renderDashboard();
+}
+
+async function loadBaseData() {
+  const [u, o] = await Promise.all([
+    sb.from('unidades').select('*').order('alias'),
+    sb.from('operadores').select('*').eq('activo', true)
+  ]);
+  allUnidades = u.data || [];
+  allOperadores = o.data || [];
+}
+
+function aLogout() { sessionStorage.removeItem('fm_admin'); location.reload(); }
+
+// ── NAVIGATION ────────────────────────────────
+function showPage(id, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('pg' + id.charAt(0).toUpperCase() + id.slice(1)).classList.add('active');
+  btn.classList.add('active');
+  const renders = { dashboard: renderDashboard, unidades: renderUnidades, combustible: renderCombustible, danos: renderDanos, servicios: renderServicios, taller: renderTaller, turnos: renderTurnos, mecanico: renderMecanico, costos: renderCostos };
+  if (renders[id]) renders[id]();
+}
+
+// ── DASHBOARD ─────────────────────────────────
+async function renderDashboard() {
+  const today = new Date();
+  const in30 = new Date(); in30.setDate(in30.getDate() + 30);
+
+  const [svcs, repairs, damages, fuels] = await Promise.all([
+    sb.from('servicios').select('*, unidades(alias,modelo,placas)'),
+    sb.from('reparaciones').select('*, unidades(alias,modelo,placas)').eq('estado','en_proceso'),
+    sb.from('danos').select('*').eq('estado','pendiente'),
+    sb.from('combustible').select('*').order('created_at', { ascending: false }).limit(1)
+  ]);
+
+  const criticals = (svcs.data||[]).filter(s => s.proximo_fecha && new Date(s.proximo_fecha) < today);
+  const warnings = (svcs.data||[]).filter(s => s.proximo_fecha && new Date(s.proximo_fecha) >= today && new Date(s.proximo_fecha) <= in30);
+
+  document.getElementById('dashStats').innerHTML = `
+    <div class="stat a"><div class="stat-n">${allUnidades.length}</div><div class="stat-l">Unidades</div></div>
+    <div class="stat g"><div class="stat-n">${allUnidades.filter(u=>u.estado==='operativa').length}</div><div class="stat-l">Operativas</div></div>
+    <div class="stat r"><div class="stat-n">${(repairs.data||[]).length}</div><div class="stat-l">En Taller</div></div>
+    <div class="stat r"><div class="stat-n">${criticals.length}</div><div class="stat-l">Docs Vencidos</div></div>
+    <div class="stat ${warnings.length>0?'a':'g'}"><div class="stat-n">${warnings.length}</div><div class="stat-l">Por Vencer 30d</div></div>
+    <div class="stat p"><div class="stat-n">${(damages.data||[]).length}</div><div class="stat-l">Daños Pendientes</div></div>
+  `;
+
+  // Alerts
+  const alertEl = document.getElementById('dashAlerts');
+  if (!criticals.length) {
+    alertEl.innerHTML = '<div class="aitem ok"><div class="ainfo"><div class="atitle">✅ Sin documentos vencidos</div></div><div class="abadge">OK</div></div>';
+  } else {
+    alertEl.innerHTML = criticals.map(s => {
+      const days = Math.ceil((today - new Date(s.proximo_fecha)) / 86400000);
+      return `<div class="aitem urgent"><div class="ainfo"><div class="atitle">🚨 ${s.unidades?.alias||s.unidades?.modelo} — ${typeLabel(s.tipo)}</div><div class="ameta">${s.descripcion||''} · Vencido hace ${days} días (${fmtDate(s.proximo_fecha)})</div></div><div class="abadge">VENCIDO</div></div>`;
+    }).join('');
+  }
+
+  const upEl = document.getElementById('dashUpcoming');
+  if (!warnings.length) {
+    upEl.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:12px">Sin vencimientos en los próximos 30 días.</div>';
+  } else {
+    upEl.innerHTML = warnings.sort((a,b)=>new Date(a.proximo_fecha)-new Date(b.proximo_fecha)).map(s => {
+      const days = Math.ceil((new Date(s.proximo_fecha) - today) / 86400000);
+      return `<div class="aitem ${days<=7?'urgent':'warning'}"><div class="ainfo"><div class="atitle">${s.unidades?.alias||s.unidades?.modelo} — ${typeLabel(s.tipo)}</div><div class="ameta">Vence: ${fmtDate(s.proximo_fecha)} · ${s.taller||''}</div></div><div class="abadge">${days}d restantes</div></div>`;
+    }).join('');
+  }
+
+  // Taller
+  const tallerEl = document.getElementById('dashTaller');
+  const reps = repairs.data || [];
+  if (!reps.length) {
+    tallerEl.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:12px">✅ Ninguna unidad en taller actualmente.</div>';
+  } else {
+    tallerEl.innerHTML = reps.map(r => `
+      <div class="repair-card">
+        <div class="repair-header">
+          <div>
+            <div class="repair-unit">🔧 ${r.unidades?.alias||r.unidades?.modelo||'?'} <span style="color:var(--muted);font-weight:400;font-size:13px">${r.unidades?.placas||''}</span></div>
+            <div class="repair-taller">${r.taller||'—'} · Entrada: ${fmtDate(r.fecha_entrada)}</div>
+          </div>
+          <span class="chip chip-r">En Taller</span>
+        </div>
+        <div style="font-size:13px;color:var(--muted)">${r.motivo||'—'}</div>
+      </div>`).join('');
+  }
+}
+
+// ── UNIDADES ──────────────────────────────────
+async function renderUnidades() {
+  await loadBaseData();
+  const [svcs, reps] = await Promise.all([
+    sb.from('servicios').select('*'),
+    sb.from('reparaciones').select('*').eq('estado','en_proceso')
+  ]);
+
+  const today = new Date(); const in30 = new Date(); in30.setDate(in30.getDate()+30);
+  const el = document.getElementById('unidadesGrid');
+
+  if (!allUnidades.length) { el.innerHTML = '<div class="empty"><div class="empty-icon">🚛</div>Sin unidades registradas</div>'; return; }
+
+  el.innerHTML = allUnidades.map(u => {
+    const uSvcs = (svcs.data||[]).filter(s=>s.unidad_id===u.id);
+    const crit = uSvcs.filter(s=>s.proximo_fecha&&new Date(s.proximo_fecha)<today);
+    const warn = uSvcs.filter(s=>s.proximo_fecha&&new Date(s.proximo_fecha)>=today&&new Date(s.proximo_fecha)<=in30);
+    const inTaller = (reps.data||[]).some(r=>r.unidad_id===u.id);
+    const op = allOperadores.find(o=>o.id===u.operador_id);
+    const sMap = { operativa:'🟢', en_taller:'🔧', fuera_servicio:'🔴', mantenimiento:'🟡' };
+
+    return `<div class="vcard">
+      <div class="vcard-header">
+        <div class="vcard-icon">🛻</div>
+        <div>
+          <div class="vcard-name">${u.anio} ${u.marca} ${u.modelo}</div>
+          <div class="vcard-plates">${u.placas} · ${u.alias||''}</div>
+        </div>
+        <div style="margin-left:auto">${sMap[u.estado]||'🟢'}</div>
+      </div>
+      <div class="vcard-body">
+        <div class="vrow"><span class="vk">Color</span><span class="vv">${u.color||'—'}</span></div>
+        <div class="vrow"><span class="vk">Km actual</span><span class="vv">${u.km_actual?.toLocaleString()||'—'} km</span></div>
+        <div class="vrow"><span class="vk">Operador</span><span class="vv">${op?op.nombre+' '+op.apellidos.split(' ')[0]:'Sin asignar'}</span></div>
+        <div class="vrow"><span class="vk">Documentos</span><span class="vv ${crit.length?'r':warn.length?'a':'g'}">${crit.length?crit.length+' VENCIDO(S)':warn.length?warn.length+' POR VENCER':'AL CORRIENTE'}</span></div>
+        ${inTaller?`<div class="vrow"><span class="vk">Estado</span><span class="vv r">⚠️ EN TALLER</span></div>`:''}
+      </div>
+      <div class="vcard-footer">
+        <button class="btn btn-p btn-sm" onclick="openEditUnit('${u.id}')">✏️ Editar</button>
+        <button class="btn btn-g btn-sm" onclick="openAddServiceFor('${u.id}')">+ Servicio</button>
+        <button class="btn btn-b btn-sm" onclick="openAddRepairFor('${u.id}')">+ Taller</button>
+        <button class="btn btn-r btn-sm" onclick="deleteUnit('${u.id}')">Eliminar</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── COMBUSTIBLE ───────────────────────────────
+async function renderCombustible() {
+  const { data: fuels } = await sb.from('combustible').select('*, unidades(id,alias,modelo,placas), operadores(nombre,apellidos)').order('fecha', { ascending: false });
+
+  // Stats per unit
+  const statsEl = document.getElementById('fuelUnitStats');
+  statsEl.innerHTML = allUnidades.map(u => {
+    const uFuels = (fuels||[]).filter(f=>f.unidad_id===u.id);
+    const rends = calcRend(fuels||[], u.id);
+    const avg = rends.length ? (rends.reduce((s,r)=>s+r.rend,0)/rends.length) : null;
+    const totalL = uFuels.reduce((s,f)=>s+f.litros,0);
+    const totalMXN = uFuels.reduce((s,f)=>s+(f.total||0),0);
+    return `<div class="fuel-unit-card">
+      <div class="fun-rend ${avg?rendCls(avg):''}">${avg?avg.toFixed(1):'—'}</div>
+      <div class="fun-sub">km/litro promedio</div>
+      <div class="fun-name">${u.alias||u.modelo}</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:6px">${totalL.toFixed(0)}L · $${totalMXN.toFixed(0)} MXN · ${uFuels.length} cargas</div>
+    </div>`;
+  }).join('');
+
+  // Populate selects
+  const opts = allUnidades.map(u=>`<option value="${u.id}">${u.alias||u.modelo} (${u.placas})</option>`).join('');
+  document.getElementById('fuelChartFilter').innerHTML = opts;
+  document.getElementById('fuelTableFilter').innerHTML = '<option value="">Todas</option>' + opts;
+  document.getElementById('fuelChartBox').style.display = 'block';
+
+  renderFuelChart();
+  renderFuelTable();
+
+  // Store fuels globally
+  window._allFuels = fuels || [];
+}
+
+function renderFuelChart() {
+  const uid = document.getElementById('fuelChartFilter').value;
+  const rends = calcRend(window._allFuels || [], uid);
+  const u = allUnidades.find(u=>u.id===uid);
+  document.getElementById('fuelChartTitle').textContent = `Rendimiento — ${u?.alias||u?.modelo||'Unidad'}`;
+
+  if (rends.length < 2) { return; }
+  const labels = rends.map(r => fmtDate(r.fecha));
+  const values = rends.map(r => parseFloat(r.rend.toFixed(2)));
+  const ctx = document.getElementById('fuelChartCanvas').getContext('2d');
+  if (fuelChart) fuelChart.destroy();
+  fuelChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'km/litro',
+        data: values,
+        borderColor: '#3498db',
+        backgroundColor: 'rgba(52,152,219,0.08)',
+        pointBackgroundColor: values.map(v=>v>=10?'#27ae60':v>=7?'#f5a623':'#e74c3c'),
+        pointRadius: 6, tension: 0.3, fill: true
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#6b7280', font:{size:10} }, grid: { color: '#2a2e3a' } },
+        y: { ticks: { color: '#6b7280', callback: v=>v+' km/L' }, grid: { color: '#2a2e3a' }, suggestedMin: 0 }
+      }
+    }
+  });
+}
+
+function renderFuelTable() {
+  const filter = document.getElementById('fuelTableFilter').value;
+  const fuels = (window._allFuels||[]).filter(f=>!filter||f.unidad_id===filter);
+  const rendMap = {};
+  const allRends = [];
+  allUnidades.forEach(u => {
+    calcRend(window._allFuels||[], u.id).forEach(r => { rendMap[r.id]=r.rend; allRends.push(r); });
+  });
+
+  const tbody = document.getElementById('fuelTableBody');
+  if (!fuels.length) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--muted)">Sin registros</td></tr>'; return; }
+  tbody.innerHTML = fuels.map(f => {
+    const rend = rendMap[f.id];
+    const rendObj = allRends.find(r => r.id === f.id);
+    return `<tr>
+      <td><strong>${f.unidades?.alias||f.unidades?.modelo||'?'}</strong><br><span style="font-size:11px;color:var(--muted)">${f.unidades?.placas||''}</span></td>
+      <td style="font-size:12px">${f.operadores?.nombre||'—'} ${f.operadores?.apellidos?.split(' ')[0]||''}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtDate(f.fecha)}</td>
+      <td style="font-family:'IBM Plex Mono',monospace">${f.km?.toLocaleString()||'—'}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;color:var(--muted)">${rendObj?.kmRecorridos?rendObj.kmRecorridos.toLocaleString()+' km':'—'}</td>
+      <td>${f.litros?.toFixed(1)}L<br><span style="font-size:11px;color:var(--muted)">${f.tipo_combustible||''}</span></td>
+      <td>${f.precio_litro?'$'+f.precio_litro.toFixed(2):'—'}</td>
+      <td><strong>${f.total?'$'+f.total.toFixed(0):'—'}</strong></td>
+      <td>${rend?`<span style="font-weight:700;color:${rend>=10?'var(--green)':rend>=7?'var(--accent)':'var(--red)'}">${rend.toFixed(1)} km/L</span>`:'<span style="color:var(--muted);font-size:11px">—</span>'}</td>
+      <td style="font-size:12px;color:var(--muted)">${f.gasolinera||'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── DAÑOS ──────────────────────────────────────
+async function renderDanos() {
+  const filter = document.getElementById('danoFilter').value;
+  let q = sb.from('danos').select('*, unidades(alias,modelo,placas), operadores(nombre,apellidos)').order('created_at', { ascending: false });
+  if (filter === 'pendiente') q = q.eq('estado','pendiente');
+  else if (filter && filter !== '') q = q.eq('unidad_id', filter);
+
+  const { data } = await q;
+  const el = document.getElementById('danosGrid');
+
+  if (!data?.length) { el.innerHTML = '<div class="empty"><div class="empty-icon">🔍</div>Sin daños registrados</div>'; return; }
+
+  el.innerHTML = data.map(d => {
+    const sevMap = { menor: ['chip-g','Menor'], moderado: ['chip-a','Moderado'], mayor: ['chip-r','Mayor'] };
+    const estMap = { pendiente: ['chip-r','Pendiente'], en_reparacion: ['chip-a','En Reparación'], reparado: ['chip-g','Reparado'] };
+    const [sc, sl] = sevMap[d.severidad] || ['chip-g','—'];
+    const [ec, el2] = estMap[d.estado] || ['chip-r','—'];
+
+    const fotosBtn = d.fotos?.length ? `<button class="btn btn-b btn-sm" onclick="showFotos(${JSON.stringify(d.fotos).replace(/"/g,"'")}, '${d.unidades?.alias||d.unidades?.modelo} — ${d.zona}')">📷 ${d.fotos.length} foto(s)</button>` : '';
+
+    return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;margin-bottom:14px;overflow:hidden">
+      <div style="background:var(--bg3);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)">
+        <div>
+          <div style="font-weight:700">${d.unidades?.alias||d.unidades?.modelo||'?'} <span style="color:var(--muted);font-weight:400;font-size:13px">· ${d.unidades?.placas||''}</span></div>
+          <div style="font-size:12px;color:var(--muted);font-family:'IBM Plex Mono',monospace">${d.zona||'—'} · ${fmtDate(d.fecha)} · ${d.operadores?.nombre||'?'} ${d.operadores?.apellidos?.split(' ')[0]||''}</div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <span class="chip ${sc}">${sl}</span>
+          <span class="chip ${ec}">${el2}</span>
+          <select onchange="updateDanoEstado('${d.id}', this.value)" style="width:auto;margin:0;padding:5px 10px;font-size:11px">
+            <option value="pendiente" ${d.estado==='pendiente'?'selected':''}>Pendiente</option>
+            <option value="en_reparacion" ${d.estado==='en_reparacion'?'selected':''}>En reparación</option>
+            <option value="reparado" ${d.estado==='reparado'?'selected':''}>Reparado</option>
+          </select>
+        </div>
+      </div>
+      <div style="padding:14px 18px">
+        <div style="font-size:14px;margin-bottom:10px">${d.descripcion||'—'}</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          ${fotosBtn}
+          ${d.costo_estimado?`<span style="font-size:12px;color:var(--muted)">Est. $${Number(d.costo_estimado).toLocaleString()}</span>`:''}
+        </div>
+        ${d.fotos?.length ? `<div class="dmg-photos">${d.fotos.map(f=>`<img class="dmg-photo" src="${f}" onclick="enlargePhoto('${f}')" />`).join('')}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  // Populate filter with units
+  const filterSel = document.getElementById('danoFilter');
+  if (filterSel.options.length <= 2) {
+    allUnidades.forEach(u => {
+      const opt = document.createElement('option');
+      opt.value = u.id; opt.textContent = u.alias || u.modelo;
+      filterSel.appendChild(opt);
+    });
+  }
+}
+
+async function updateDanoEstado(id, estado) {
+  await sb.from('danos').update({ estado }).eq('id', id);
+  toast('Estado actualizado');
+}
+
+// ── SERVICIOS ──────────────────────────────────
+async function renderServicios() {
+  const { data } = await sb.from('servicios').select('*, unidades(alias,modelo,placas)').order('proximo_fecha', { ascending: true });
+  const today = new Date(); const in30 = new Date(); in30.setDate(in30.getDate()+30);
+  const tbody = document.getElementById('serviciosBody');
+
+  // populate select
+  const svOpts = allUnidades.map(u=>`<option value="${u.id}">${u.alias||u.modelo} (${u.placas})</option>`).join('');
+  document.getElementById('svUnidad').innerHTML = svOpts;
+
+  if (!data?.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--muted)">Sin servicios registrados</td></tr>'; return; }
+  tbody.innerHTML = data.map(s => {
+    let chip = '';
+    if (s.proximo_fecha) {
+      const d = new Date(s.proximo_fecha);
+      if (d < today) chip = '<span class="chip chip-r">VENCIDO</span>';
+      else if (d <= in30) chip = '<span class="chip chip-a">POR VENCER</span>';
+      else chip = '<span class="chip chip-g">OK</span>';
+    }
+    return `<tr>
+      <td><strong>${s.unidades?.alias||s.unidades?.modelo||'?'}</strong><br><span style="font-size:11px;color:var(--muted)">${s.unidades?.placas||''}</span></td>
+      <td>${typeLabel(s.tipo)}</td>
+      <td style="font-size:12px;color:var(--muted);max-width:180px">${s.descripcion||'—'}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtDate(s.fecha)}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtDate(s.proximo_fecha)}</td>
+      <td style="font-size:12px">${s.taller||'—'}</td>
+      <td>${chip}</td>
+      <td style="display:flex;gap:6px">
+        <button class="btn btn-p btn-sm" onclick="openEditService('${s.id}')">✏️</button>
+        <button class="btn btn-g btn-sm" onclick="renovarServicio('${s.id}','${s.unidad_id}','${s.tipo}')">🔄</button>
+        <button class="btn btn-r btn-sm" onclick="deleteSvc('${s.id}')">✕</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ── TALLER ──────────────────────────────────────
+async function renderTaller() {
+  const { data } = await sb.from('reparaciones').select('*, unidades(alias,modelo,placas)').order('fecha_entrada', { ascending: false });
+  const active = (data||[]).filter(r=>r.estado==='en_proceso');
+  const done = (data||[]).filter(r=>r.estado==='terminado');
+
+  const rpOpts = allUnidades.map(u=>`<option value="${u.id}">${u.alias||u.modelo} (${u.placas})</option>`).join('');
+  document.getElementById('rpUnidad').innerHTML = rpOpts;
+
+  const renderRepairs = (list) => list.map(r => `
+    <div class="repair-card">
+      <div class="repair-header">
+        <div>
+          <div class="repair-unit">🔧 ${r.unidades?.alias||r.unidades?.modelo||'?'} <span style="color:var(--muted);font-weight:400;font-size:13px">${r.unidades?.placas||''}</span></div>
+          <div class="repair-taller">${r.taller||'—'} · Entrada: ${fmtDate(r.fecha_entrada)} ${r.fecha_estimada_salida?'· Salida est: '+fmtDate(r.fecha_estimada_salida):''}</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span class="chip ${r.estado==='en_proceso'?'chip-r':'chip-g'}">${r.estado==='en_proceso'?'En proceso':'Terminado'}</span>
+          ${r.estado==='en_proceso'?`<button class="btn btn-g btn-sm" onclick="closeRepair('${r.id}')">✅ Cerrar</button>`:''}
+        </div>
+      </div>
+      <div style="font-size:13px;color:var(--text);margin-bottom:10px"><strong>Motivo:</strong> ${r.motivo||'—'}</div>
+      ${r.trabajos_pendientes?.length?`<div class="repair-items">${r.trabajos_pendientes.map(t=>`<div class="repair-item">🔩 ${t}</div>`).join('')}</div>`:''}
+      ${r.costo_estimado?`<div style="margin-top:10px;font-size:13px;color:var(--muted)">Costo est: <strong style="color:var(--text)">$${Number(r.costo_estimado).toLocaleString()}</strong></div>`:''}
+      ${r.notas?`<div style="margin-top:6px;font-size:12px;color:var(--muted)">${r.notas}</div>`:''}
+    </div>`).join('');
+
+  document.getElementById('repairActive').innerHTML = active.length ? renderRepairs(active) : '<div style="color:var(--muted);font-size:13px;padding:12px">✅ Ninguna unidad en taller.</div>';
+  document.getElementById('repairHistory').innerHTML = done.length ? renderRepairs(done) : '<div style="color:var(--muted);font-size:13px;padding:12px">Sin historial de reparaciones.</div>';
+}
+
+async function closeRepair(id) {
+  const { data: rep } = await sb.from('reparaciones').select('unidad_id').eq('id',id).single();
+  await sb.from('reparaciones').update({ estado: 'terminado', fecha_salida: new Date().toISOString().split('T')[0] }).eq('id', id);
+  if (rep) await sb.from('unidades').update({ estado: 'operativa' }).eq('id', rep.unidad_id);
+  toast('✅ Reparación cerrada');
+  renderTaller();
+}
+
+// ── TURNOS ──────────────────────────────────────
+async function renderTurnos() {
+  const { data } = await sb.from('turnos').select('*, unidades(alias,modelo,placas), operadores(nombre,apellidos)').order('fecha', { ascending: false }).limit(50);
+  const el = document.getElementById('turnosContent');
+  if (!data?.length) { el.innerHTML = '<div class="empty"><div class="empty-icon">📋</div>Sin turnos registrados</div>'; return; }
+
+  el.innerHTML = `<table><thead><tr><th>Operador</th><th>Unidad</th><th>Tipo</th><th>Fecha</th><th>Km</th><th>Fotos</th><th>Notas</th></tr></thead><tbody>` +
+  data.map(t => `<tr>
+    <td>${t.operadores?.nombre||'?'} ${t.operadores?.apellidos?.split(' ')[0]||''}</td>
+    <td>${t.unidades?.alias||t.unidades?.modelo||'?'}<br><span style="font-size:11px;color:var(--muted)">${t.unidades?.placas||''}</span></td>
+    <td><span class="chip ${t.tipo==='inicio'?'chip-g':'chip-r'}">${t.tipo==='inicio'?'🟢 Inicio':'🔴 Fin'}</span></td>
+    <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtDatetime(t.fecha)}</td>
+    <td style="font-family:'IBM Plex Mono',monospace">${t.km?.toLocaleString()||'—'}</td>
+    <td>${t.fotos?.length?`<button class="btn btn-b btn-sm" onclick="showFotos(${JSON.stringify(t.fotos).replace(/"/g,"'")}, 'Turno ${t.tipo}')">📷 ${t.fotos.length}</button>`:'—'}</td>
+    <td style="font-size:12px;color:var(--muted)">${t.notas||'—'}</td>
+  </tr>`).join('') + '</tbody></table>';
+}
+
+// ── MODALS & SAVES ────────────────────────────
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(el => el.addEventListener('click', e => { if(e.target===el) el.classList.remove('open'); }));
+
+function openAddServiceFor(uid) {
+  const svOpts = allUnidades.map(u=>`<option value="${u.id}" ${u.id===uid?'selected':''}>${u.alias||u.modelo} (${u.placas})</option>`).join('');
+  document.getElementById('svUnidad').innerHTML = svOpts;
+  document.getElementById('svFecha').value = new Date().toISOString().split('T')[0];
+  openModal('mAddService');
+}
+
+function openAddRepairFor(uid) {
+  const rpOpts = allUnidades.map(u=>`<option value="${u.id}" ${u.id===uid?'selected':''}>${u.alias||u.modelo} (${u.placas})</option>`).join('');
+  document.getElementById('rpUnidad').innerHTML = rpOpts;
+  document.getElementById('rpEntrada').value = new Date().toISOString().split('T')[0];
+  openModal('mAddRepair');
+}
+
+async function openEditUnit(id) {
+  const u = allUnidades.find(u => u.id === id);
+  if (!u) return;
+  document.getElementById('euId').value = u.id;
+  document.getElementById('euMarca').value = u.marca || '';
+  document.getElementById('euModelo').value = u.modelo || '';
+  document.getElementById('euAnio').value = u.anio || '';
+  document.getElementById('euPlacas').value = u.placas || '';
+  document.getElementById('euAlias').value = u.alias || '';
+  document.getElementById('euColor').value = u.color || '';
+  document.getElementById('euKm').value = u.km_actual || '';
+  document.getElementById('euEstado').value = u.estado || 'operativa';
+  document.getElementById('euVin').value = u.vin || '';
+  document.getElementById('euNotas').value = u.notas || '';
+  const opOpts = allOperadores.map(o => `<option value="${o.id}" ${o.id===u.operador_id?'selected':''}>${o.nombre} ${o.apellidos}</option>`).join('');
+  document.getElementById('euOperador').innerHTML = '<option value="">Sin asignar</option>' + opOpts;
+  openModal('mEditUnit');
+}
+
+async function updateUnit() {
+  const id = document.getElementById('euId').value;
+  await sb.from('unidades').update({
+    marca: document.getElementById('euMarca').value.trim(),
+    modelo: document.getElementById('euModelo').value.trim(),
+    anio: parseInt(document.getElementById('euAnio').value) || null,
+    placas: document.getElementById('euPlacas').value.trim().toUpperCase(),
+    alias: document.getElementById('euAlias').value.trim(),
+    color: document.getElementById('euColor').value.trim(),
+    km_actual: parseInt(document.getElementById('euKm').value) || 0,
+    estado: document.getElementById('euEstado').value,
+    operador_id: document.getElementById('euOperador').value || null,
+    vin: document.getElementById('euVin').value.trim(),
+    notas: document.getElementById('euNotas').value.trim()
+  }).eq('id', id);
+  closeModal('mEditUnit');
+  await loadBaseData();
+  renderUnidades();
+  toast('✅ Unidad actualizada');
+}
+
+async function openEditService(id) {
+  const { data: s } = await sb.from('servicios').select('*').eq('id', id).single();
+  if (!s) return;
+  document.getElementById('esId').value = s.id;
+  const svOpts = allUnidades.map(u => `<option value="${u.id}" ${u.id===s.unidad_id?'selected':''}>${u.alias||u.modelo} (${u.placas})</option>`).join('');
+  document.getElementById('esUnidad').innerHTML = svOpts;
+  document.getElementById('esTipo').value = s.tipo || 'otro';
+  document.getElementById('esFecha').value = s.fecha || '';
+  document.getElementById('esDesc').value = s.descripcion || '';
+  document.getElementById('esCosto').value = s.costo || '';
+  document.getElementById('esKm').value = s.km_en_servicio || '';
+  document.getElementById('esProximo').value = s.proximo_fecha || '';
+  document.getElementById('esTaller').value = s.taller || '';
+  openModal('mEditService');
+}
+
+async function updateService() {
+  const id = document.getElementById('esId').value;
+  await sb.from('servicios').update({
+    unidad_id: document.getElementById('esUnidad').value,
+    tipo: document.getElementById('esTipo').value,
+    fecha: document.getElementById('esFecha').value || null,
+    descripcion: document.getElementById('esDesc').value.trim(),
+    costo: parseFloat(document.getElementById('esCosto').value) || 0,
+    km_en_servicio: parseInt(document.getElementById('esKm').value) || null,
+    proximo_fecha: document.getElementById('esProximo').value || null,
+    taller: document.getElementById('esTaller').value.trim()
+  }).eq('id', id);
+  closeModal('mEditService');
+  renderServicios();
+  toast('✅ Servicio actualizado');
+}
+
+async function renovarServicio(id, unidadId, tipo) {
+  // Abre el modal de nuevo servicio prellenado con el mismo tipo y unidad
+  const svOpts = allUnidades.map(u => `<option value="${u.id}" ${u.id===unidadId?'selected':''}>${u.alias||u.modelo} (${u.placas})</option>`).join('');
+  document.getElementById('svUnidad').innerHTML = svOpts;
+  document.getElementById('svTipo').value = tipo;
+  document.getElementById('svFecha').value = new Date().toISOString().split('T')[0];
+  document.getElementById('svDesc').value = '';
+  document.getElementById('svCosto').value = '';
+  document.getElementById('svKm').value = '';
+  document.getElementById('svProximo').value = '';
+  document.getElementById('svTaller').value = '';
+  closeModal('mEditService');
+  openModal('mAddService');
+  toast('🔄 Registra la renovación del servicio');
+}
+
+
+  const marca = document.getElementById('uMarca').value.trim();
+  const modelo = document.getElementById('uModelo').value.trim();
+  if (!marca || !modelo) { toast('Ingresa marca y modelo', true); return; }
+  await sb.from('unidades').insert({
+    marca, modelo,
+    anio: parseInt(document.getElementById('uAnio').value)||null,
+    placas: document.getElementById('uPlacas').value.trim().toUpperCase(),
+    alias: document.getElementById('uAlias').value.trim(),
+    color: document.getElementById('uColor').value.trim(),
+    km_actual: parseInt(document.getElementById('uKm').value)||0,
+    tipo: document.getElementById('uTipo').value,
+    operador_id: document.getElementById('uOperador').value||null,
+    vin: document.getElementById('uVin').value.trim(),
+    notas: document.getElementById('uNotas').value.trim()
+  });
+  closeModal('mAddUnit');
+  await loadBaseData();
+  renderUnidades();
+  toast('✅ Unidad registrada');
+}
+
+async function saveService() {
+  await sb.from('servicios').insert({
+    unidad_id: document.getElementById('svUnidad').value,
+    tipo: document.getElementById('svTipo').value,
+    fecha: document.getElementById('svFecha').value||null,
+    descripcion: document.getElementById('svDesc').value.trim(),
+    costo: parseFloat(document.getElementById('svCosto').value)||0,
+    km_en_servicio: parseInt(document.getElementById('svKm').value)||null,
+    proximo_fecha: document.getElementById('svProximo').value||null,
+    taller: document.getElementById('svTaller').value.trim()
+  });
+  closeModal('mAddService');
+  renderServicios();
+  toast('✅ Servicio registrado');
+}
+
+async function saveRepair() {
+  const uid = document.getElementById('rpUnidad').value;
+  const trabajosRaw = document.getElementById('rpTrabajos').value.trim();
+  const trabajos = trabajosRaw.split('\n').map(t=>t.trim()).filter(Boolean);
+  await sb.from('reparaciones').insert({
+    unidad_id: uid,
+    fecha_entrada: document.getElementById('rpEntrada').value,
+    fecha_estimada_salida: document.getElementById('rpSalida').value||null,
+    taller: document.getElementById('rpTaller').value.trim(),
+    motivo: document.getElementById('rpMotivo').value.trim(),
+    trabajos_pendientes: trabajos,
+    costo_estimado: parseFloat(document.getElementById('rpCosto').value)||0,
+    autorizado_por: document.getElementById('rpAuto').value.trim(),
+    notas: document.getElementById('rpNotas').value.trim()
+  });
+  // Update unit status
+  await sb.from('unidades').update({ estado: 'en_taller' }).eq('id', uid);
+  closeModal('mAddRepair');
+  await loadBaseData();
+  renderTaller();
+  toast('✅ Entrada a taller registrada');
+}
+
+async function deleteUnit(id) {
+  if (!confirm('¿Eliminar esta unidad y todos sus registros?')) return;
+  await Promise.all([
+    sb.from('unidades').delete().eq('id',id),
+    sb.from('servicios').delete().eq('unidad_id',id),
+    sb.from('danos').delete().eq('unidad_id',id),
+    sb.from('combustible').delete().eq('unidad_id',id),
+    sb.from('reparaciones').delete().eq('unidad_id',id)
+  ]);
+  await loadBaseData();
+  renderUnidades();
+  toast('Unidad eliminada');
+}
+
+async function deleteSvc(id) {
+  if (!confirm('¿Eliminar?')) return;
+  await sb.from('servicios').delete().eq('id',id);
+  renderServicios();
+  toast('Eliminado');
+}
+
+// ── PHOTOS ────────────────────────────────────
+function showFotos(fotos, title) {
+  document.getElementById('mFotosTitle').textContent = title || 'Fotos';
+  const arr = Array.isArray(fotos) ? fotos : JSON.parse(fotos.replace(/'/g,'"'));
+  document.getElementById('mFotosGrid').innerHTML = arr.map(f=>`<img src="${f}" onclick="enlargePhoto('${f}')" />`).join('');
+  openModal('mFotos');
+}
+
+function enlargePhoto(src) {
+  const div = document.createElement('div');
+  div.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:999;display:flex;align-items:center;justify-content:center;cursor:pointer';
+  div.onclick = () => div.remove();
+  const img = document.createElement('img');
+  img.src = src;
+  img.style.cssText = 'max-width:92vw;max-height:92vh;border-radius:10px;border:2px solid var(--accent)';
+  div.appendChild(img);
+  document.body.appendChild(div);
+}
+
+// ── MECÁNICO ──────────────────────────────────
+async function renderMecanico() {
+  const unitFilter = document.getElementById('mecFilterUnit').value;
+  const tipoFilter = document.getElementById('mecFilterTipo').value;
+
+  let q = sb.from('trabajos_mecanico').select('*, unidades(alias,modelo,placas)').order('fecha', { ascending: false });
+  if (unitFilter) q = q.eq('unidad_id', unitFilter);
+  if (tipoFilter) q = q.eq('tipo', tipoFilter);
+  const { data } = await q;
+
+  // Populate unit filter
+  const mecUnitSel = document.getElementById('mecFilterUnit');
+  if (mecUnitSel.options.length <= 1) {
+    allUnidades.forEach(u => {
+      const opt = document.createElement('option');
+      opt.value = u.id; opt.textContent = u.alias||u.modelo;
+      mecUnitSel.appendChild(opt);
+    });
+  }
+
+  // Stats
+  const trabajos = data || [];
+  const totalMO = trabajos.reduce((s,t) => s+(t.costo_mano_obra||0), 0);
+  const totalPartes = trabajos.reduce((s,t) => s+(t.costo_partes||0), 0);
+  const totalGeneral = trabajos.reduce((s,t) => s+(t.costo_total||0), 0);
+  document.getElementById('mecStatsRow').innerHTML = `
+    <div class="stat b"><div class="stat-n">${trabajos.length}</div><div class="stat-l">Trabajos</div></div>
+    <div class="stat a"><div class="stat-n">$${Math.round(totalMO).toLocaleString()}</div><div class="stat-l">Mano de Obra</div></div>
+    <div class="stat p"><div class="stat-n">$${Math.round(totalPartes).toLocaleString()}</div><div class="stat-l">Partes</div></div>
+    <div class="stat g"><div class="stat-n">$${Math.round(totalGeneral).toLocaleString()}</div><div class="stat-l">Total Gastado</div></div>
+  `;
+
+  const tbody = document.getElementById('mecTableBody');
+  if (!trabajos.length) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--muted)">Sin trabajos registrados</td></tr>'; return; }
+
+  const tipoMap = { correctivo:'🔧 Correctivo', preventivo:'🛡 Preventivo', electrico:'⚡ Eléctrico', carroceria:'🚗 Carrocería', suspension:'🔩 Suspensión', frenos:'🛑 Frenos', motor:'⚙️ Motor', transmision:'⚙️ Transmisión', otro:'📌 Otro' };
+
+  tbody.innerHTML = trabajos.map(t => `<tr>
+    <td><strong>${t.unidades?.alias||t.unidades?.modelo||'?'}</strong><br><span style="font-size:11px;color:var(--muted)">${t.unidades?.placas||''}</span></td>
+    <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtDate(t.fecha)}</td>
+    <td><span class="chip chip-b" style="font-size:10px">${tipoMap[t.tipo]||t.tipo}</span></td>
+    <td style="font-size:12px;max-width:200px">${t.descripcion}</td>
+    <td style="font-size:12px;color:var(--muted)">${t.partes_usadas?.join(', ')||'—'}</td>
+    <td style="font-family:'IBM Plex Mono',monospace">${t.costo_mano_obra?'$'+t.costo_mano_obra.toLocaleString():'—'}</td>
+    <td style="font-family:'IBM Plex Mono',monospace">${t.costo_partes?'$'+t.costo_partes.toLocaleString():'—'}</td>
+    <td><strong style="color:var(--accent)">${t.costo_total?'$'+t.costo_total.toLocaleString():'—'}</strong></td>
+    <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${t.km_en_servicio?.toLocaleString()||'—'}</td>
+  </tr>`).join('');
+}
+
+// ── MECÁNICO ──────────────────────────────────
+// ── COSTOS ────────────────────────────────────
+let costosChart = null;
+
+async function renderCostos() {
+  const anioSel = document.getElementById('costosAnio');
+  const currentYear = new Date().getFullYear();
+  if (anioSel.options.length === 0) {
+    for (let y = currentYear; y >= currentYear - 4; y--) {
+      const opt = document.createElement('option');
+      opt.value = y; opt.textContent = y;
+      anioSel.appendChild(opt);
+    }
+  }
+  const anio = parseInt(anioSel.value) || currentYear;
+  const desde = `${anio}-01-01`;
+  const hasta = `${anio}-12-31`;
+
+  const uSel = document.getElementById('costosUnidad');
+  if (uSel.options.length <= 1) {
+    allUnidades.forEach(u => {
+      const opt = document.createElement('option');
+      opt.value = u.id; opt.textContent = u.alias || u.modelo;
+      uSel.appendChild(opt);
+    });
+  }
+  const filtroUnidad = uSel.value;
+
+  const [svcs, fuels, reps, trabajos] = await Promise.all([
+    sb.from('servicios').select('*, unidades(alias,modelo)').gte('fecha', desde).lte('fecha', hasta),
+    sb.from('combustible').select('*, unidades(alias,modelo)').gte('fecha', desde).lte('fecha', hasta),
+    sb.from('reparaciones').select('*, unidades(alias,modelo)').gte('fecha_entrada', desde).lte('fecha_entrada', hasta),
+    sb.from('trabajos_mecanico').select('*, unidades(alias,modelo)').gte('fecha', desde).lte('fecha', hasta)
+  ]);
+
+  const f = filtroUnidad;
+  const sData = (svcs.data||[]).filter(r => !f || r.unidad_id===f);
+  const fData = (fuels.data||[]).filter(r => !f || r.unidad_id===f);
+  const rData = (reps.data||[]).filter(r => !f || r.unidad_id===f);
+  const tData = (trabajos.data||[]).filter(r => !f || r.unidad_id===f);
+
+  const items = [
+    ...sData.map(s => ({ uid:s.unidad_id, unom:s.unidades?.alias||s.unidades?.modelo||'?', fecha:s.fecha, cat:s.tipo, desc:s.descripcion||typeLabel(s.tipo), monto:s.costo||0 })),
+    ...fData.map(f => ({ uid:f.unidad_id, unom:f.unidades?.alias||f.unidades?.modelo||'?', fecha:f.fecha, cat:'gasolina', desc:`${f.litros}L ${f.tipo_combustible||''}`, monto:f.total||0 })),
+    ...rData.map(r => ({ uid:r.unidad_id, unom:r.unidades?.alias||r.unidades?.modelo||'?', fecha:r.fecha_entrada, cat:'reparacion', desc:r.motivo||'Reparación', monto:r.costo_real||r.costo_estimado||0 })),
+    ...tData.map(t => ({ uid:t.unidad_id, unom:t.unidades?.alias||t.unidades?.modelo||'?', fecha:t.fecha, cat:'mecanico', desc:t.descripcion, monto:t.costo_total||0 }))
+  ].sort((a,b) => new Date(b.fecha)-new Date(a.fecha));
+
+  const total = items.reduce((s,i)=>s+i.monto,0);
+  const totalComb = items.filter(i=>i.cat==='gasolina').reduce((s,i)=>s+i.monto,0);
+  const totalSvc = items.filter(i=>!['gasolina','reparacion','mecanico'].includes(i.cat)).reduce((s,i)=>s+i.monto,0);
+  const totalRep = items.filter(i=>['reparacion','mecanico'].includes(i.cat)).reduce((s,i)=>s+i.monto,0);
+
+  // KPIs
+  document.getElementById('costosKpis').innerHTML = `
+    <div class="stat a"><div class="stat-n">$${Math.round(total).toLocaleString()}</div><div class="stat-l">Total ${anio}</div></div>
+    <div class="stat b"><div class="stat-n">$${Math.round(totalComb).toLocaleString()}</div><div class="stat-l">Combustible</div></div>
+    <div class="stat g"><div class="stat-n">$${Math.round(totalSvc).toLocaleString()}</div><div class="stat-l">Servicios y Docs</div></div>
+    <div class="stat r"><div class="stat-n">$${Math.round(totalRep).toLocaleString()}</div><div class="stat-l">Reparaciones</div></div>
+    <div class="stat p"><div class="stat-n">${items.length}</div><div class="stat-l">Registros</div></div>
+    <div class="stat a"><div class="stat-n">$${total>0?Math.round(total/12).toLocaleString():'—'}</div><div class="stat-l">Promedio/Mes</div></div>
+  `;
+
+  // Categorías
+  const catDefs = [
+    { key:'gasolina', icon:'⛽', label:'Gasolina' },
+    { key:'aceite', icon:'🛢', label:'Aceite' },
+    { key:'tenencia', icon:'📋', label:'Tenencia' },
+    { key:'seguro', icon:'🛡', label:'Seguro' },
+    { key:'verificacion', icon:'✅', label:'Verificación' },
+    { key:'llantas', icon:'🔄', label:'Llantas' },
+    { key:'frenos', icon:'🛑', label:'Frenos' },
+    { key:'mecanico', icon:'🔧', label:'Mecánico' },
+    { key:'reparacion', icon:'🏭', label:'Reparaciones' },
+    { key:'filtros', icon:'🔩', label:'Filtros' },
+    { key:'revision', icon:'🔍', label:'Revisión' },
+    { key:'otro', icon:'📌', label:'Otros' }
+  ];
+  document.getElementById('costosCategorias').innerHTML = catDefs.map(c => {
+    const monto = items.filter(i=>i.cat===c.key).reduce((s,i)=>s+i.monto,0);
+    if (!monto) return '';
+    const pct = total>0?((monto/total)*100).toFixed(1):0;
+    return `<div class="cat-card"><div class="cat-icon">${c.icon}</div><div class="cat-amount">$${Math.round(monto).toLocaleString()}</div><div class="cat-label">${c.label}</div><div class="cat-pct">${pct}% del total</div></div>`;
+  }).join('');
+
+  // Gráfica mensual
+  const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const monthlyTotals = Array(12).fill(0);
+  items.forEach(i => { const m = new Date(i.fecha+'T12:00:00').getMonth(); monthlyTotals[m] += i.monto; });
+  const ctx = document.getElementById('costosChartMensual').getContext('2d');
+  if (costosChart) costosChart.destroy();
+  costosChart = new Chart(ctx, {
+    type:'bar',
+    data:{ labels:meses, datasets:[{ label:'Gasto', data:monthlyTotals, backgroundColor:'rgba(245,166,35,0.7)', borderColor:'#f5a623', borderWidth:1, borderRadius:6 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{ticks:{color:'#6b7280'}, grid:{color:'#2a2e3a'}}, y:{ticks:{color:'#6b7280', callback:v=>'$'+v.toLocaleString()}, grid:{color:'#2a2e3a'}} } }
+  });
+
+  // Por unidad
+  const unitsToShow = filtroUnidad ? allUnidades.filter(u=>u.id===filtroUnidad) : allUnidades;
+  const maxCosto = Math.max(...unitsToShow.map(u=>items.filter(i=>i.uid===u.id).reduce((s,i)=>s+i.monto,0)), 1);
+  document.getElementById('costosPorUnidad').innerHTML = unitsToShow.map(u => {
+    const uItems = items.filter(i=>i.uid===u.id);
+    const uTotal = uItems.reduce((s,i)=>s+i.monto,0);
+    const uComb = uItems.filter(i=>i.cat==='gasolina').reduce((s,i)=>s+i.monto,0);
+    const uSvc = uItems.filter(i=>!['gasolina','reparacion','mecanico'].includes(i.cat)).reduce((s,i)=>s+i.monto,0);
+    const uRep = uItems.filter(i=>['reparacion','mecanico'].includes(i.cat)).reduce((s,i)=>s+i.monto,0);
+    const pctC = uTotal>0?(uComb/uTotal*100).toFixed(0):0;
+    const pctS = uTotal>0?(uSvc/uTotal*100).toFixed(0):0;
+    const pctR = uTotal>0?(uRep/uTotal*100).toFixed(0):0;
+    return `<div class="unit-cost-bar">
+      <div class="ucb-header">
+        <div><div class="ucb-name">🛻 ${u.alias||u.modelo} <span style="color:var(--muted);font-weight:400;font-size:13px">${u.placas}</span></div>
+        <div style="font-size:12px;color:var(--muted)">${uItems.length} registros · ${anio}</div></div>
+        <div class="ucb-total">$${Math.round(uTotal).toLocaleString()}</div>
+      </div>
+      <div class="bar-track"><div style="display:flex;height:100%">
+        <div class="bar-fill" style="width:${pctC}%;background:#3498db"></div>
+        <div class="bar-fill" style="width:${pctS}%;background:#f5a623"></div>
+        <div class="bar-fill" style="width:${pctR}%;background:#e74c3c"></div>
+      </div></div>
+      <div class="bar-legend">
+        <div class="bar-leg-item"><div class="bar-dot" style="background:#3498db"></div>Combustible $${Math.round(uComb).toLocaleString()}</div>
+        <div class="bar-leg-item"><div class="bar-dot" style="background:#f5a623"></div>Servicios $${Math.round(uSvc).toLocaleString()}</div>
+        <div class="bar-leg-item"><div class="bar-dot" style="background:#e74c3c"></div>Reparaciones $${Math.round(uRep).toLocaleString()}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Tabla detalle
+  const catIcons = { gasolina:'⛽', aceite:'🛢', tenencia:'📋', seguro:'🛡', verificacion:'✅', llantas:'🔄', frenos:'🛑', mecanico:'🔧', reparacion:'🏭', filtros:'🔩', revision:'🔍', otro:'📌' };
+  const tbody = document.getElementById('costosTablaBody');
+  if (!items.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--muted)">Sin gastos en este periodo</td></tr>'; return; }
+  tbody.innerHTML = items.map(i => `<tr>
+    <td><strong>${i.unom}</strong></td>
+    <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${fmtDate(i.fecha)}</td>
+    <td>${catIcons[i.cat]||'📌'} ${typeLabel(i.cat)}</td>
+    <td style="font-size:12px;color:var(--muted)">${i.desc}</td>
+    <td><strong style="color:${i.monto>5000?'var(--red)':i.monto>2000?'var(--accent)':'var(--text)'}">$${Math.round(i.monto).toLocaleString()}</strong></td>
+  </tr>`).join('');
+}
+
+function calcRend(fuels, uid) {
+  // Metodo odometrico acumulado - funciona con cargas parciales de 20-30L
+  // km recorridos entre carga anterior y esta / litros de ese periodo
+  const vf = fuels.filter(f=>f.unidad_id===uid&&f.km>0).sort((a,b)=>a.km-b.km);
+  if (vf.length < 2) return [];
+  const r = [];
+  let litrosAcum = vf[0].litros;
+  for (let i=1;i<vf.length;i++) {
+    const kmDiff = vf[i].km - vf[i-1].km;
+    if (kmDiff > 0 && litrosAcum > 0) {
+      r.push({ id:vf[i].id, fecha:vf[i].fecha, km:vf[i].km, kmRecorridos:kmDiff, litros:litrosAcum, rend:kmDiff/litrosAcum });
+    }
+    litrosAcum = vf[i].litros;
+  }
+  return r;
+}
+function rendCls(r) { return r>=10?'style="color:var(--green)"':r>=7?'style="color:var(--accent)"':'style="color:var(--red)"'; }
+function typeLabel(t) {
+  const m = { aceite:'🛢 Aceite', tenencia:'📋 Tenencia', seguro:'🛡 Seguro', verificacion:'✅ Verificación', revision:'🔧 Revisión', llantas:'🔄 Llantas', frenos:'🛑 Frenos', filtros:'🔩 Filtros', otro:'📌 Otro' };
+  return m[t]||t;
+}
+function fmtDate(d) {
+  if (!d) return '—';
+  const s = d.split('T')[0].split('-');
+  return `${s[2]}/${s[1]}/${s[0]}`;
+}
+function fmtDatetime(d) {
+  if (!d) return '—';
+  const dt = new Date(d);
+  return `${dt.getDate()}/${dt.getMonth()+1}/${dt.getFullYear()} ${dt.getHours()}:${String(dt.getMinutes()).padStart(2,'0')}`;
+}
+function toast(msg, isErr) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.borderLeftColor = isErr ? 'var(--red)' : 'var(--green)';
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 3000);
+}
+
+// Populate operator select for unit modal on load
+async function populateOpSelect() {
+  const opts = allOperadores.map(o=>`<option value="${o.id}">${o.nombre} ${o.apellidos}</option>`).join('');
+  document.getElementById('uOperador').innerHTML = '<option value="">Sin asignar</option>' + opts;
+}
+</script>
+</body>
+</html>
