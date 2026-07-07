@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>FlotaManager — Operador</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.7.1/firebase-app-compat.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.7.1/firebase-firestore-compat.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap');
 
@@ -612,6 +614,34 @@ const SUPABASE_KEY = 'sb_publishable_Fo8kOKBDHT2ehXZlVLGcVw_cl7EVA4R';
 const _sb = window.supabase || window.Supabase;
 const sb = _sb.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+// ── FIREBASE (Sistema Operativo Troncoso — compartido) ──
+var fmDb = null;
+try {
+  var firebaseConfig = {
+    apiKey: "AIzaSyBuw-B6vn3jzruFBPKEifUNp4vYieYn9cU",
+    authDomain: "troncoso--sistema.firebaseapp.com",
+    projectId: "troncoso--sistema",
+    storageBucket: "troncoso--sistema.firebasestorage.app",
+    messagingSenderId: "112716974444",
+    appId: "1:112716974444:web:fd3f570827afc476634b49"
+  };
+  if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+  fmDb = firebase.firestore();
+} catch (e) {
+  console.log('Firebase no disponible:', e);
+  fmDb = null;
+}
+function fechaISOLocal(d) {
+  var y = d.getFullYear();
+  var m = String(d.getMonth() + 1).padStart(2, '0');
+  var day = String(d.getDate()).padStart(2, '0');
+  return y + '-' + m + '-' + day;
+}
+function saveGasolinaFirebase(rec) {
+  if (!fmDb) return;
+  fmDb.collection('gasolinas').add(rec).catch(function (e) { console.log('Error guardando gasolina en Firebase:', e); });
+}
+
 let currentOp = null;
 let myUnidades = [];
 let turnoTipo = 'inicio';
@@ -911,6 +941,18 @@ async function saveFuel() {
   });
 
   await sb.from('unidades').update({ km_actual: km }).eq('id', unidadId).lt('km_actual', km);
+
+  const unidad = myUnidades.find(u => u.id === unidadId);
+  const ahora = new Date();
+  saveGasolinaFirebase({
+    operador: currentOp ? (currentOp.nombre + ' ' + currentOp.apellidos) : '',
+    unidad: unidad ? (unidad.alias || unidad.modelo) : '',
+    litros: litros,
+    monto: litros * precio,
+    estacion: document.getElementById('fuelGasolinera').value || '',
+    fecha: fechaISOLocal(ahora),
+    timestamp: ahora.toISOString()
+  });
 
   closeSheet('sheetFuel');
   toast(`⛽ ${litros}L registrados`);
